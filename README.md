@@ -17,10 +17,20 @@ No game data is included.
 - X11/Vulkan rendering and keyboard controls are working.
 - `blrl`/`bclrl`, asynchronous interrupt delivery, and native/interpreter
   fallback handoff are fixed and differentially validated.
-- GGTE01 skips its measured `0x8016A40C` wait loop, reducing native dispatch
-  pressure from roughly 53 million to 17 million dispatches per second.
-- 3D gameplay performance still needs optimization; JIT64 is used only as a
-  behavioral and performance comparison baseline.
+- GGTE01 uses dual-core execution and three measured idle-loop PCs. Bounded
+  native backedges batch copy/clear loops while yielding every 256 guest cycles.
+  Together these reduced steady 3D dispatch pressure from roughly 53 million to
+  4–6 million dispatches per second.
+- CPU ABI v3 supports Dolphin-compatible fast FP defaults while retaining exact
+  FP behavior for lockstep verification, `AccurateNaNs`, and enabled guest FP
+  exceptions.
+- Native gameplay usually sustains `59.94 VPS / 100%`, but a recurring 3D
+  workload still drops to roughly `40–46 VPS / 66–79%` for several seconds.
+  JIT64 sustains 100% on the same path and remains comparison-only, not the
+  deliverable.
+- Rolling profiling identifies the remaining spike as call/return-heavy native
+  dispatch around `0x801ADD44`, `0x801ACFC4`, and the copy routine at
+  `0x8000519C`; cache fallback traffic does not spike with it.
 
 ## Dependencies
 
@@ -76,7 +86,10 @@ make tools
 make recompile ISO=/path/to/game.iso
 ```
 
-`moderngekko-port` caches compiled modules by DOL hash and toolchain identity, so re-running `recompile`/`run` after the first build is cheap, it hits cache instead of recompiling.
+`moderngekko-port` caches compiled modules by DOL hash, toolchain identity,
+DolRecomp executable hash, and the module runtime-source hash. Re-running
+`recompile`/`run` after the first build is therefore cheap without risking a
+stale module after emitter or GXRuntime changes.
 
 > [!NOTE]
 > Wii ISOs need [Wiimms ISO Tools](https://wit.wiimm.de/) (`wit`) for extraction, `make` downloads it automatically into `extern/wit` on first use. GameCube extraction is built into DolRecomp directly and doesn't need this.
@@ -107,6 +120,24 @@ For example, to force a debug build with extra runner flags:
 
 ```
 CMAKE_BUILD_TYPE=Debug make run ISO=/path/to/game.iso RUN_ARGS="--headless"
+```
+
+## Native/JIT Comparison and Profiling
+
+The runner defaults to the native module. Select a core explicitly for a
+reproducible comparison:
+
+```
+make run GAME=chibi-robo RUN_ARGS="--cpu-core static --graphics Vulkan -X11"
+make run GAME=chibi-robo RUN_ARGS="--cpu-core jit64 --graphics Vulkan -X11"
+```
+
+Optional one-second performance telemetry and sampled native-dispatch timing
+are enabled with environment variables:
+
+```
+MODERNGEKKO_PROFILE_PERF=1 STATICRECOMP_PROFILE_DISPATCH=1 \
+  make run GAME=chibi-robo RUN_ARGS="--cpu-core static --graphics Vulkan -X11"
 ```
 
 ## Controller Input
