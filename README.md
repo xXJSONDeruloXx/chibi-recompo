@@ -1,15 +1,26 @@
-# ModernGekko-Template
+# chibi-recompo
 
-A template for building a static-recompilation pipeline for GameCube and Wii games, built on:
+A native static-recompilation project for the US GameCube release of
+**Chibi-Robo! Plug Into Adventure!** (`GGTE01`). It is built on:
 
-- [DolRecomp](https://github.com/ExpansionPak/DolRecomp) - static recompiler that turns a GameCube/Wii DOL into split C source.
-- [ModernGekko](https://github.com/ExpansionPak/ModernGekko) - the runtime the recompiled C links against (built on a Dolphin-derived core for video/audio/HLE).
+- [DolRecomp](https://github.com/ExpansionPak/DolRecomp) - converts the game's DOL into split C source.
+- [ModernGekko](https://github.com/xXJSONDeruloXx/ModernGekko/tree/chibi-robo-native) - runtime and tooling for the native module.
+- [RecompCore](https://github.com/xXJSONDeruloXx/RecompCore/tree/chibi-robo-native) - Dolphin-derived chassis with the Chibi-Robo correctness and profiling fixes.
 
-Both are pulled in as git submodules under `lib/`. Everything is handled through the top-level `Makefile`. This repo has no game-specific code of its own, so it's a starting point for standing up a recompilation project for any GameCube or Wii title you own.
+The dependencies are pinned as submodules under `lib/`, and the top-level
+`Makefile` drives extraction, recompilation, module compilation, and launch.
+No game data is included.
 
-## Using This Template
+## Current Status
 
-Click **Use this template** on GitHub (or fork/clone it directly) to create your own project repo. Nothing in the `Makefile` or submodule setup needs to change to point it at a different game, just pass a different `ISO=` the first time you run it. Rename the repo to whatever fits your project.
+- The native module boots through the health warning and logos into gameplay.
+- X11/Vulkan rendering and keyboard controls are working.
+- `blrl`/`bclrl`, asynchronous interrupt delivery, and native/interpreter
+  fallback handoff are fixed and differentially validated.
+- GGTE01 skips its measured `0x8016A40C` wait loop, reducing native dispatch
+  pressure from roughly 53 million to 17 million dispatches per second.
+- 3D gameplay performance still needs optimization; JIT64 is used only as a
+  behavioral and performance comparison baseline.
 
 ## Dependencies
 
@@ -26,8 +37,8 @@ Xcode's command line tools are also required (AppleClang 14.0.3+; verified on Ap
 ## Getting the Source
 
 ```
-git clone --recurse-submodules git@github.com:<your-org>/<your-repo>.git
-cd <your-repo>
+git clone --recurse-submodules https://github.com/xXJSONDeruloXx/chibi-recompo.git
+cd chibi-recompo
 ```
 
 If you already cloned without `--recurse-submodules`, `make` will fetch them for you on first run. To do it manually instead:
@@ -41,10 +52,10 @@ git submodule update --init --recursive
 
 ## Recompile and Run
 
-Bring your own legally-owned ISO, no game data is included in or downloaded by this repository. Works with any GameCube or Wii disc; there is no default game, so `ISO=` (or an already-extracted `GAME=`) is required. Point `ISO` at a dump and run:
+Bring your own legally-owned `GGTE01` ISO; no game data is included in or downloaded by this repository. There is no bundled default image, so `ISO=` (or an already-extracted `GAME=`) is required. Point `ISO` at your dump and run:
 
 ```
-make run ISO=/path/to/Your\ Game.iso
+make run ISO=/path/to/Chibi-Robo.iso RUN_ARGS="--graphics Vulkan --audio ALSA -X11"
 ```
 
 This builds DolRecomp and ModernGekko, extracts the ISO, recompiles `main.dol` to C, compiles the result into a native module, and launches the game in a window.

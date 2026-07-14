@@ -1,6 +1,7 @@
 [submodule "lib/ModernGekko"]
 	path = lib/ModernGekko
-	url = git@github.com:ExpansionPak/ModernGekko.git
+	url = https://github.com/xXJSONDeruloXx/ModernGekko.git
+	branch = chibi-robo-native
 [submodule "lib/DolRecomp"]
 	path = lib/DolRecomp
-	url = git@github.com:ExpansionPak/DolRecomp.git
+	url = https://github.com/ExpansionPak/DolRecomp.git
