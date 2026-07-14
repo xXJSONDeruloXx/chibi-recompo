@@ -79,9 +79,9 @@ moderngekko: submodules
 
 tools: dolrecomp moderngekko
 
-# Wii ISO extraction needs Wiimms ISO Tools; DolRecomp downloads its own
-# copy into extern/wit on first use. GameCube extraction doesn't need this,
-# but running it unconditionally keeps the pipeline simple.
+# Wii ISO/WBFS extraction needs Wiimms ISO Tools; DolRecomp downloads its own
+# copy into extern/wit on first use. GameCube extraction is built in, so the
+# extraction recipe below only invokes this setup for non-GameCube images.
 #
 # The prebuilt macOS wit binaries ship with a signature current Gatekeeper
 # rejects outright (`invalid signature (code or signature have been
@@ -103,7 +103,7 @@ wit: $(WIT_STAMP)
 # are order-only prerequisites (`|`) since they're phony/always "run" --
 # normal prerequisites would force re-extraction on every invocation.
 # There is no default game, so GAME_SLUG must come from ISO or GAME.
-$(EXTRACTED_DIR)/sys/main.dol: | dolrecomp wit
+$(EXTRACTED_DIR)/sys/main.dol: | dolrecomp
 	@if [ -z "$(GAME_SLUG)" ]; then \
 		echo "error: no ISO= or GAME= given -- see 'make help'" >&2; \
 		exit 1; \
@@ -115,6 +115,11 @@ $(EXTRACTED_DIR)/sys/main.dol: | dolrecomp wit
 	@if [ ! -f "$(ISO)" ]; then \
 		echo "error: ISO not found: $(ISO)" >&2; \
 		exit 1; \
+	fi
+	@# GameCube discs have magic c2 33 9f 3d at offset 0x1c and use the
+	@# built-in extractor. Other supported images are Wii ISO/WBFS and need wit.
+	@if [ "$$(od -An -tx1 -j 28 -N 4 "$(ISO)" | tr -d ' \n')" != "c2339f3d" ]; then \
+		$(MAKE) wit; \
 	fi
 	$(DOLRECOMP_BIN) extract "$(ISO)" $(EXTRACTED_DIR)
 	@# Wii discs have multiple partitions (UPDATE/CHANNEL/DATA); the wit
